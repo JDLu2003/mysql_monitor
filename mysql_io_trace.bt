@@ -1,0 +1,52 @@
+#!/usr/bin/env bpftrace
+/*
+ * mysql_io_trace.bt - Trace MySQL VFS read/write operations using bpftrace.
+ *
+ * This script monitors I/O activity from 'mysqld' processes at the VFS layer,
+ * providing a comprehensive view of file reads and writes.
+ *
+ * USAGE: sudo bpftrace mysql_io_trace.bt
+ *        sudo bpftrace mysql_io_trace.bt > mysql_io.csv
+ */
+
+BEGIN
+{
+	printf("Timestamp,PID,Command,Operation,File,Size(Bytes)\n");
+}
+
+// Hook for file reads
+kprobe:vfs_read
+{
+	// Filter for mysqld processes
+	if (comm == "mysqld")
+	{
+		// arg0 is 'struct file *file', arg2 is 'size_t count'
+		printf("%-25s,%-7d,%-16s,read,%-30s,%-10d\n",
+			strftime("%Y-%m-%d %H:%M:%S", nsecs),
+			pid,
+			comm,
+			str(arg0->f_path.dentry->d_name.name),
+			arg2);
+	}
+}
+
+// Hook for file writes
+kprobe:vfs_write
+{
+	// Filter for mysqld processes
+	if (comm == "mysqld")
+	{
+		// arg0 is 'struct file *file', arg2 is 'size_t count'
+		printf("%-25s,%-7d,%-16s,write,%-30s,%-10d\n",
+			strftime("%Y-%m-%d %H:%M:%S", nsecs),
+			pid,
+			comm,
+			str(arg0->f_path.dentry->d_name.name),
+			arg2);
+	}
+}
+
+END
+{
+	printf("Detached.\n");
+}

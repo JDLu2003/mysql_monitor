@@ -136,3 +136,52 @@ plt.show()
 ## License
 
 This project is licensed under the Apache License, Version 2.0.
+
+---
+
+## Alternative: Using `bpftrace` for Quick Analysis
+
+For users who prefer a higher-level, scripting-based approach, this project also includes a `bpftrace` script (`mysql_io_trace.bt`) that provides a comprehensive view of MySQL's I/O activity.
+
+### Advantages of `bpftrace`
+
+- **Simplicity**: A single script file contains all the logic.
+- **Flexibility**: Easy to modify on the fly for different tracing needs.
+- **Broad View**: It hooks `vfs_read` and `vfs_write`, capturing **all** file I/O (not just readahead), which gives a more complete picture of disk access patterns.
+
+### How to Use `mysql_io_trace.bt`
+
+This script traces VFS read and write operations initiated by `mysqld` processes.
+
+**Requirements**:
+- `bpftrace` installed on your Linux system.
+- Root privileges to run.
+
+**1. Run and Print to Console**
+
+Execute the script directly. It will print a CSV header and then stream live I/O events to your terminal. Press `Ctrl+C` to stop.
+
+```bash
+sudo bpftrace mysql_io_trace.bt
+```
+
+**2. Save Output to a CSV File**
+
+You can easily redirect the output to a file for later analysis:
+
+```bash
+sudo bpftrace mysql_io_trace.bt > mysql_vfs_io.csv
+```
+
+### `bpftrace` Output Format
+
+The output is formatted as a clean, comma-separated list with the following columns:
+
+| Column      | Description                                      |
+|-------------|--------------------------------------------------|
+| `Timestamp` | The timestamp of the I/O event.                  |
+| `PID`       | The Process ID of the `mysqld` worker.           |
+| `Command`   | The process name (`mysqld`).                     |
+| `Operation` | The type of I/O: `read` or `write`.              |
+| `File`      | The name of the file being accessed.             |
+| `Size(Bytes)`| The size of the read/write request in bytes.     |
