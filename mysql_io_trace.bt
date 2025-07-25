@@ -20,12 +20,13 @@ kprobe:vfs_read
 	// Filter for mysqld processes
 	if (comm == "mysqld")
 	{
-		// arg0 is 'struct file *file', arg2 is 'size_t count'
+		// For vfs_read, bpftrace provides a built-in 'filename' variable.
+		// arg2 is 'size_t count'
 		printf("%-25s,%-7d,%-16s,read,%-30s,%-10d\n",
 			strftime("%Y-%m-%d %H:%M:%S", nsecs),
 			pid,
 			comm,
-			str(arg0->f_path.dentry->d_name.name),
+			filename,
 			arg2);
 	}
 }
@@ -36,12 +37,13 @@ kprobe:vfs_write
 	// Filter for mysqld processes
 	if (comm == "mysqld")
 	{
-		// arg0 is 'struct file *file', arg2 is 'size_t count'
+		// For vfs_write, bpftrace also provides the 'filename' variable.
+		// arg2 is 'size_t count'
 		printf("%-25s,%-7d,%-16s,write,%-30s,%-10d\n",
 			strftime("%Y-%m-%d %H:%M:%S", nsecs),
 			pid,
 			comm,
-			str(arg0->f_path.dentry->d_name.name),
+			filename,
 			arg2);
 	}
 }
