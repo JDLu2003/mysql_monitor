@@ -20,15 +20,15 @@ kprobe:vfs_read
 	// Filter for mysqld processes
 	if (comm == "mysqld")
 	{
-		// CORRECTED: Store the pointer in a variable before using str()
-		// to help bpftrace correctly infer the type.
-		$fname = arg0->f_path.dentry->d_name.name;
+		// CORRECT SYNTAX: Use the 'args' struct for stable argument access.
+		// 'args->file' corresponds to the 'struct file *file' argument.
+		// 'args->count' corresponds to the 'size_t count' argument.
 		printf("%-25s,%-7d,%-16s,read,%-30s,%-10d\n",
 			strftime("%Y-%m-%d %H:%M:%S", nsecs),
 			pid,
 			comm,
-			str($fname),
-			arg2);
+			str(args->file->f_path.dentry->d_name.name),
+			args->count);
 	}
 }
 
@@ -38,15 +38,13 @@ kprobe:vfs_write
 	// Filter for mysqld processes
 	if (comm == "mysqld")
 	{
-		// CORRECTED: Store the pointer in a variable before using str()
-		// to help bpftrace correctly infer the type.
-		$fname = arg0->f_path.dentry->d_name.name;
+		// Use the 'args' struct here as well for consistency and robustness.
 		printf("%-25s,%-7d,%-16s,write,%-30s,%-10d\n",
 			strftime("%Y-%m-%d %H:%M:%S", nsecs),
 			pid,
 			comm,
-			str($fname),
-			arg2);
+			str(args->file->f_path.dentry->d_name.name),
+			args->count);
 	}
 }
 
