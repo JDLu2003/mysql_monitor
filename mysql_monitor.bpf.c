@@ -34,7 +34,6 @@ process_ra_event(void *ctx, struct file_ra_state *ra, size_t req_size,
 {
 	struct event event = {};
 	const char *filename;
-	struct file *file;
 	struct dentry *dentry;
 
 	// Filter for target process name
@@ -45,6 +44,9 @@ process_ra_event(void *ctx, struct file_ra_state *ra, size_t req_size,
 		}
 	}
 
+	// CORRECTED LOGIC: Get the containing 'struct file' from the 'f_ra' member
+	struct file *file = bpf_container_of(ra, struct file, f_ra);
+
 	// Populate event data
 	event.ts = bpf_ktime_get_ns();
 	event.pid = bpf_get_current_pid_tgid() >> 32;
@@ -52,8 +54,7 @@ process_ra_event(void *ctx, struct file_ra_state *ra, size_t req_size,
 	bpf_probe_read_str(&event.hook_point, sizeof(event.hook_point),
 			   hook_name);
 
-	// Get filename from file_ra_state -> file -> dentry
-	file = BPF_CORE_READ(ra, file);
+	// Get filename from file -> dentry
 	dentry = BPF_CORE_READ(file, f_path.dentry);
 	filename = BPF_CORE_READ(dentry, d_name.name);
 	bpf_probe_read_str(&event.filename, sizeof(event.filename), filename);
