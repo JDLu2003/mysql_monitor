@@ -12,15 +12,16 @@
 
 #define TASK_COMM_LEN 16
 #define MAX_FILENAME_LEN 256
+#define HOOK_POINT_LEN 32
 
-// Data structure to hold event information (must match the BPF struct)
+// Updated event structure to match the BPF side
 struct event {
 	__u64 ts;
 	__u32 pid;
-	__u64 offset;
-	__u64 nr_to_read;
+	__u64 req_size; // Requested readahead size
 	char comm[TASK_COMM_LEN];
 	char filename[MAX_FILENAME_LEN];
+	char hook_point[HOOK_POINT_LEN];
 };
 
 static volatile bool exiting = false;
@@ -42,7 +43,7 @@ static void sig_handler(int sig)
 	exiting = true;
 }
 
-// Perf buffer event handler
+// Perf buffer event handler, updated for the new event structure
 void handle_event(void *ctx, int cpu, void *data, __u32 data_sz)
 {
 	const struct event *e = data;
@@ -55,12 +56,14 @@ void handle_event(void *ctx, int cpu, void *data, __u32 data_sz)
 	strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", tm);
 
 	if (output_f) {
-		fprintf(output_f, "%s,%u,%s,%s,%llu,%llu\n", ts, e->pid,
-			e->comm, e->filename, e->nr_to_read, e->offset);
+		// CSV format: Timestamp,PID,Command,HookPoint,File,ReqSize(Bytes)
+		fprintf(output_f, "%s,%u,%s,%s,%s,%llu\n", ts, e->pid,
+			e->comm, e->hook_point, e->filename, e->req_size);
 	} else {
-		printf("%-20s %-7u %-16s %-30s %-7llu %-10llu\n", ts,
-		       e->pid, e->comm, e->filename, e->nr_to_read,
-		       e->offset);
+		// Console format
+		printf("%-20s %-7u %-16s %-10s %-30s %-10llu\n", ts,
+		       e->pid, e->comm, e->hook_point, e->filename,
+		       e->req_size);
 	}
 }
 
@@ -132,15 +135,15 @@ int main(int argc, char **argv)
 			err = 1;
 			goto cleanup;
 		}
-		// Write CSV header
+		// Write updated CSV header
 		fprintf(output_f,
-			"Timestamp,PID,Command,File,Pages,Offset\n");
+			"Timestamp,PID,Command,HookPoint,File,ReqSize(Bytes)\n");
 		printf("Capturing data... Saving to %s. Press Ctrl+C to stop.\n",
 		       output_file);
 	} else {
-		// Print table header
-		printf("%-20s %-7s %-16s %-30s %-7s %-10s\n", "TIMESTAMP",
-		       "PID", "COMMAND", "FILE", "PAGES", "OFFSET");
+		// Print updated table header
+		printf("%-20s %-7s %-16s %-10s %-30s %-10s\n", "TIMESTAMP",
+		       "PID", "COMMAND", "HOOK_POINT", "FILE", "REQ_SIZE_B");
 	}
 
 	// Set up perf buffer polling
